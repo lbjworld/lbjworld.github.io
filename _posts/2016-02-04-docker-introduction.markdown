@@ -1,7 +1,6 @@
 ---
 layout: post
 title: "Docker简介"
-date:   2016-02-04 17:06:18
 categories: system docker
 published: true
 ---
@@ -127,26 +126,28 @@ docker适用于几乎所有与环境配置有关的使用场景，下图是一�
 
 直接上例子吧：
 
-    rproxy:    
-        image: "nginx:1.9"    
-        ports:    
-         - "5000:80"    
-        volumes:    
-         - ./nginx.conf:/etc/nginx/nginx.conf:ro     
-        links:    
-         - web:web    
-    web:    
-        image: "demo_stage3"    
-        volumes:    
-         - ./dj_demo/dj_demo/docker_settings.py:/code/dj_demo/settings.py    
-        links:    
-         - db:database    
-        command: ./entry-point.sh     
-    db:    
-        image: "mysql:5.6"    
-        environment:    
-        - MYSQL_ROOT_PASSWORD=password    
-        - MYSQL_DATABASE=demo
+{% highlight YAML %}
+rproxy:
+    image: "nginx:1.9"
+    ports:
+     - "5000:80"
+    volumes:
+     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    links:
+     - web:web
+web:
+    image: "demo_stage3"
+    volumes:
+     - ./dj_demo/dj_demo/docker_settings.py:/code/dj_demo/settings.py
+    links:
+     - db:database
+    command: ./entry-point.sh
+db:
+    image: "mysql:5.6"
+    environment:
+    - MYSQL_ROOT_PASSWORD=password
+    - MYSQL_DATABASE=demo
+{% endhighlight %}
 
 以上即一个docker-compose.yml文件的全部内容，下面我们来看看这个文件到底都定义了哪些内容：
 
@@ -164,8 +165,8 @@ docker适用于几乎所有与环境配置有关的使用场景，下图是一�
 ![docker compose sample]({{ site.baseurl }}/images/docker-compose-sample.jpg)
 
 之后在命令行执行
-
-    $ docker-compose up
-
+{% highlight Bash shell scripts %}
+$ docker-compose up
+{% endhighlight %}
 docker-compose工具将在当前目录下自动找到以`docker-compose.yml`命名的文件并运行。
 
