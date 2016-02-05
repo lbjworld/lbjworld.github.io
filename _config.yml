@@ -10,3 +10,4 @@ github_username:  lbjworld
 
 # Build settings
 markdown: kramdown
+#markdown: rdiscount
