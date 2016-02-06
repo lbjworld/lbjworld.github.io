@@ -15,7 +15,7 @@ docker可谓是近年来虚拟化届的当红明星，各家云平台（AWS，Go
 
 # 与传统虚拟化技术的区别
 从技术趋势来说，虚拟化技术大致可以分为三种：完全虚拟化（机器指令级别：VMware、VirtualBox）、准虚拟化（通过修改操作系统底层使其可以运行在容器之上：Xen）、系统虚拟化（由host操作系统本身负责调度管理虚拟化容器，docker正是属于此种类型）。既然同是虚拟化技术，docker与它的老前辈们相比有何优势呢？从下图我们可以直观的看出二者的区别：
-![VMs vs. Containers]({{ site.baseurl }}/images/docker-vms-vs-containers.jpg)
+![VMs vs. Containers]({{ site.baseurl }}/assets/images/docker-vms-vs-containers.png)
 
 传统的虚拟化技术将VM构建在Hypervisor之上，每个VM几乎又是一套独立的运行体系（包括Guest OS、相关依赖和应用本身），而系统虚拟化如docker，则是以独立的进程空间直接运行在Host OS之上，多个容器共享OS内核资源，同时各自管理自身的应用和相关依赖。笔者认为，相较于其他虚拟化技术，docker的优势在于：
 
@@ -95,7 +95,7 @@ docker主要由Go语言实现，其系统架构主要分为两个部分：服务
 
 docker适用于几乎所有与环境配置有关的使用场景，下图是一个典型的docker应用场景：
 
-![docker application]({{ site.baseurl }}/images/docker-application-workflow.jpg)
+![docker application]({{ site.baseurl }}/assets/images/docker-application-workflow.png)
 
 该图所描述的场景如下：
 
@@ -162,7 +162,7 @@ db:
 
 整个docker-compose配置的环境如下图所示：
 
-![docker compose sample]({{ site.baseurl }}/images/docker-compose-sample.jpg)
+![docker compose sample]({{ site.baseurl }}/assets/images/docker-compose-sample.png)
 
 之后在命令行执行
 {% highlight Bash shell scripts %}

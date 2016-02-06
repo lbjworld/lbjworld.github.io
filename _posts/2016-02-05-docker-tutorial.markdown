@@ -73,6 +73,7 @@ $ apt-cache policy docker-engine
 输出如下：
 {% highlight Bash shell scripts %}
 docker-engine:
+  Installed: (none)
   Candidate: 1.10.0-0~trusty
   Version table:
      1.10.0-0~trusty 0
@@ -160,6 +161,8 @@ docker的运行需要root权限，每次都需要在命令前添加`sudo`语句�
 {% highlight Bash shell scripts %}
 $ sudo usermod -aG docker <用户名>
 {% endhighlight %}
+
+> 注意：这条语句需要重新登陆终端才能生效
 
 > 注意：docker用户组的权限等同于root用户组，在生产环境中这样做可能会导致安全问题!
 
@@ -388,7 +391,7 @@ web服务一般都是以提供数据为目标的，单单运行一个简单的�
 
 这次我们将主要讨论变化的部分，首先来看看`docker-compose.yml`
 
-{% highlight Bash shell scripts %}
+{% highlight yaml %}
 # stage 2 docker-compose.yml
 web:
     image: "demo_stage2"
@@ -439,7 +442,17 @@ DATABASES = {
 我们看到Django在运行时从环境变量中获取数据库的名称和数据库的密码，这两个环境变量是从哪里来的呢？
 我想大家应该已经可以猜到了，这两个环境变量是从链接到`web`容器的`db`容器提供的（我们在docker-compose.yml文件中可是给`db`容器指定了两个环境变量哦）。
 不过这里有一点问题，我们先前指定的环境变量是`MYSQL_ROOT_PASSWORD`和`MYSQL_DATABASE`，为什么在配置中引用的是`DB_ENV_MYSQL_ROOT_PASSWORD`和`DB_ENV_MYSQL_DATABASE`呢？
-原来这里是有一个映射规则的，当一个容器被链接到另一个容器中后，其原有的环境变量就会被添加上一个链接别名的前缀和一个固定的ENV前缀
+原来这里是有一个映射规则的，当一个容器被链接到另一个容器中后，其原有的环境变量就会被添加上一个链接别名的前缀和一个固定的ENV前缀：`<链接别名>_ENV_<原有环境变量名称>`
+此例中链接数据库的别名是`db`，所以我们得到以`DB_ENV_`开头的两个环境变量。
+
+这里还有一个细节需要注意，即我们将数据库的host设置为`db`，这个也是和链接别名有关系，docker会自动将如下这样一个条目添加到容器内的hosts文件中：
+
+{% highlight Bash shell scripts %}
+10.1.36.3   db
+{% endhighlight %}
+
+这样我们就可以通过别名来直接引用数据库容器了，前面的那个IP是docker内部分配给数据库容器的IP（不同的机器或者每次运行的时候都可能不同）。
+ 
 
 ### Stage 3: 添加反向代理
 
