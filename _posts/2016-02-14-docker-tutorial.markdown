@@ -1,7 +1,7 @@
 ---
 layout: post
 title: "Docker入门"
-published: false 
+published: true 
 ---
 
 在[Docker简介]({% post_url 2016-02-04-docker-introduction %})中，我们对于Docker的技术实现和应用场景有了大体的了解，
@@ -389,6 +389,8 @@ web服务一般都是以提供数据为目标的，单单运行一个简单的�
 * build.sh：和之前一样，没有变化
 * docker-compose.yml：主要变化在这里，我们新添加了一个数据库服务
 
+#### 相关设置
+
 这次我们将主要讨论变化的部分，首先来看看`docker-compose.yml`
 
 {% highlight yaml %}
@@ -453,12 +455,113 @@ DATABASES = {
 
 这样我们就可以通过别名来直接引用数据库容器了，前面的那个IP是docker内部分配给数据库容器的IP（不同的机器或者每次运行的时候都可能不同）。
  
+在这个应用中，我们将用户访问页面的次数记录在数据库中，并且在页面展示。具体的应用逻辑请[参考代码](https://github.com/lbjworld/demo/tree/master/docker_demo/stage2/dj_demo/hello)
+
+再次运行如下命令：
+
+{% highlight Bash shell scripts %}
+$ ./build.sh
+$ docker-compose up
+{% endhighlight %}
+
+打开浏览器输入`http://localhost:5000/hello/`
+
+> It is now 2016-02-14 02:48:57.536433, count : 2.
+
+可以看到随着页面的刷新，count次数在增加。
+
+#### 启动依赖
+
+细心的朋友或许会有疑问，我们同时启动了两个容器，但是web容器的启动实际上是依赖于db容器的，如果web容器在db容器之前启动，那么django进程将因找不到对应的db而抛出异常，进而影响之后的db访问。
+那么我们是如何做到让db容器先于web容器启动的呢？秘密就在`entry-point.sh`脚本中：
+
+i{% highlight Bash shell scripts %}
+#!/bin/bash
+
+# input: tcp_addr, tcp_port
+wait_tcp_dependency()
+{
+    local tcp_addr=$1;
+    local tcp_port=$2;
+    local testing_url="tcp://${tcp_addr}:${tcp_port}"
+
+    # assign fd automatically
+    # refer to http://stackoverflow.com/questions/8295908/how-to-use-a-variable-to-indicate-a-file-descriptor-in-bash
+    while ! exec {id}<>/dev/tcp/${tcp_addr}/${tcp_port}; do
+        echo "$(date) - trying to connect to ${testing_url}"
+        sleep 1
+    done   
+}
+
+echo "connecting to db ..."
+wait_tcp_dependency ${DB_PORT_3306_TCP_ADDR} ${DB_PORT_3306_TCP_PORT}
+
+python manage.py makemigrations
+python manage.py migrate
+python manage.py runserver 0.0.0.0:8000
+{% endhighlight %}
+
+可以看到，除了最后一行django应用启动之外，我们添加了不少新代码，其中`wait_tcp_dependency`是一个函数，用于探测某一个指定的`host:port`是否有效，这个就是设置启动依赖的关键！在web容器的启动脚本中，我们添加了对于db容器地址/端口的探测机制，在db容器启动之前，我们会一直探测`${DB_PORT_3306_TCP_ADDR}:${DB_PORT_3306_TCP_PORT}`（环境变量的命名规则在上节已经介绍过），在探测到端口有效之后，后续的脚本代码才会被执行（django数据库迁移，启动应用）。
 
 ### Stage 3: 添加反向代理
 
 > 本部分对应docker_demo代码中的[stage 3](https://github.com/lbjworld/demo/tree/master/docker_demo/stage3)
 
-# 关于Docker的一些运维工具
----
+目前为止，我们已经搭建了一个带有db数据库的web服务，为了使得web服务能够更加灵活的部署，一般的web应用都会在接入端添加一个反向代理进行控制，这一节我们将为web服务添加一个nginx反向代理。
+因为反向代理对于应用来说是透明的，本节我们将直接使用上一节构建的web镜像`demo_stage2`。同上节相同，我们将着重介绍项目中变化的部分。
 
+首先来看一下`docker-compose.yml`:
+
+{% highlight yaml %}
+# stage 3 docker-compose.yml
+rproxy:
+    image: "nginx:1.9"
+    ports:
+     - "5000:5000"
+    volumes:
+     - ./nginx.conf:/etc/nginx/nginx.conf:ro 
+    links:
+     - web:web
+
+web:
+    image: "demo_stage2"
+    volumes:
+     - ./dj_demo/dj_demo/docker_settings.py:/code/dj_demo/settings.py
+    links:
+     - db:db
+    command: ./entry-point.sh 
+
+db:
+    image: "mysql:5.6"
+    environment:
+     - MYSQL_ROOT_PASSWORD=password
+     - MYSQL_DATABASE=demo
+{% endhighlight %}
+
+可以看到我们添加了一个`rproxy`服务：
+
+* 这个服务基于`nginx:1.9`（该镜像详细的配置参考[这里](https://hub.docker.com/_/nginx/)）镜像构建，这里我们直接使用官方构建好的镜像
+* 我们将容器内的5000端口映射到本机的5000端口
+* 将新添加的`nginx.conf`配置文件只读映射到代理服务内部
+* 将`web`服务链接到代理容器
+
+具体的nginx配置见[nginx.conf](https://github.com/lbjworld/demo/blob/master/docker_demo/stage3/nginx.conf)
+
+再次运行如下命令：
+
+{% highlight Bash shell scripts %}
+$ docker-compose up
+{% endhighlight %}
+
+打开浏览器输入`http://localhost:5000/hello/`
+
+> It is now 2016-02-14 03:41:41.045051, count : 1.
+
+此时在终端日志中可以看到nginx的输出如下：
+
+{% highlight Bash shell scripts %}
+rproxy_1 | 10.1.36.1 - - [14/Feb/2016:03:41:41 +0000] "GET /hello/ HTTP/1.1" 200 119 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
+{% endhighlight %}
+
+OK，反向代理添加完成，是不是很简单:)
 
