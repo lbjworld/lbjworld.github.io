@@ -71,7 +71,7 @@ Linux CGroup全称Linux Control Group， 是Linux内核的一个功能，用来�
 
 如果想进一步了解AUFS在docker中的应用可以参考[这篇文章](http://coolshell.cn/articles/17061.html)
 
-![Union File System]({{ site.baseurl }}/images/docker-filesystems-multilayer.png)
+![Union File System]({{ site.baseurl }}/assets/images/docker-filesystems-multilayer.png)
 
 # Docker系统构成
 
